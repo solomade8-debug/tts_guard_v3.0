@@ -8,7 +8,7 @@ import os
 from datetime import date
 from database import init_db, reset_db, has_data, get_active_contracts_count, get_all_clients, get_all_buildings, get_financial_summary
 from seed_data import seed
-from theme import get_colors, inject_css, is_dark_mode
+from theme import get_colors, inject_css
 
 # ---------------------------------------------------------------------------
 # PAGE CONFIG
@@ -23,10 +23,6 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 # THEME
 # ---------------------------------------------------------------------------
-if "dark_mode" not in st.session_state:
-    st.session_state.dark_mode = True
-
-dark = is_dark_mode()
 c = get_colors()
 inject_css()
 
@@ -43,18 +39,6 @@ if not has_data():
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
 
 with st.sidebar:
-    # Theme toggle
-    theme_col1, theme_col2 = st.columns([3, 1])
-    with theme_col1:
-        st.markdown(
-            f'<p style="color: {c["TEXT_MUTED"]}; font-size: 0.8rem; margin: 4px 0;">Theme</p>',
-            unsafe_allow_html=True,
-        )
-    with theme_col2:
-        if st.button("🌙" if not dark else "☀️", key="theme_toggle"):
-            st.session_state.dark_mode = not st.session_state.dark_mode
-            st.rerun()
-
     # Logo
     logo_bg = "#012f5d"
     if os.path.exists(LOGO_PATH):
@@ -75,11 +59,7 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
 
-    st.markdown(
-        f'<p style="color: {c["TEXT_MUTED"]}; font-size: 0.85rem; margin-top: 2px;">'
-        "Talent Technical Services</p>",
-        unsafe_allow_html=True,
-    )
+    st.caption("Talent Technical Services")
     st.markdown(f"📅 {date.today().strftime('%B %d, %Y')}")
     st.markdown("📍 Abu Dhabi, UAE")
 
@@ -126,10 +106,7 @@ with st.sidebar:
 # WELCOME PAGE
 # ---------------------------------------------------------------------------
 st.markdown(
-    f'<h1 style="background: linear-gradient(90deg, {c["HEADER_HEAD"]}, {c["HEADER_TAIL"]}); '
-    "-webkit-background-clip: text; -webkit-text-fill-color: transparent; "
-    'font-family: Roboto, sans-serif; font-weight: 700; '
-    'margin-bottom: 0;">TTS Guard</h1>',
+    '<h1 class="fire-header" style="margin-bottom: 0;">TTS Guard</h1>',
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -137,11 +114,9 @@ st.markdown(
     f'font-weight: 500; margin-top: 0;">AMC Management Dashboard</h3>',
     unsafe_allow_html=True,
 )
-st.markdown(
-    f'<p style="color: {c["TEXT_MUTED"]}; font-size: 1.05rem; margin-top: -8px;">'
+st.caption(
     "Centralized inspection tracking, compliance monitoring, and financial oversight "
-    "for fire safety AMC contracts across Abu Dhabi.</p>",
-    unsafe_allow_html=True,
+    "for fire safety AMC contracts across Abu Dhabi."
 )
 
 st.divider()

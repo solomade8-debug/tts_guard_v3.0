@@ -163,32 +163,41 @@ TTS Guard is a centralized dashboard providing:
 | Frontend/Backend | Streamlit (latest) | Rapid prototyping, professional UI, zero frontend code |
 | Database | SQLite (single file) | Zero configuration, offline capable, portable |
 | Data Processing | Pandas | DataFrames for tables and charts |
+| Charts | Plotly (>=5.18.0) | Interactive charts: donut charts, gauges, stacked bars, horizontal bars |
 | PDF Generation | fpdf2 | Lightweight PDF library for inspection reports |
+| Theming | Streamlit native config.toml + decorative CSS | Flash-free dark/light mode via native theme engine |
+| Containerization | Docker (python:3.11-slim) | Consistent deployment, single-command startup |
 
 ### 4.2 Deployment
-- **Demo mode:** Local execution via `streamlit run app.py`
-- **Database:** Single file `tts_guard.db` in project root
-- **Dependencies:** `streamlit`, `pandas`, `fpdf2` (in `requirements.txt`)
+- **Docker:** `docker build -t tts-guard . && docker run -p 8501:8501 tts-guard`
+- **Local:** `streamlit run app.py`
+- **Database:** Single file `tts_guard.db` in project root (auto-created)
+- **Dependencies:** `streamlit`, `pandas`, `fpdf2`, `plotly` (in `requirements.txt`)
 - **Offline:** 100% offline with seed data, no external APIs
 
 ### 4.3 Project Structure
 ```
 TTS_bot/
 ├── prd.md                      # This document
-├── requirements.txt            # streamlit, pandas, fpdf2
+├── requirements.txt            # streamlit, pandas, fpdf2, plotly
+├── Dockerfile                  # Docker container (python:3.11-slim, port 8501)
+├── .dockerignore               # Excludes .git, __pycache__, .db files
 ├── app.py                      # Entry point: welcome page, sidebar, DB init
-├── database.py                 # SQLite schema (7 tables) + query functions
+├── database.py                 # SQLite schema (8 tables) + query functions
 ├── seed_data.py                # Realistic demo data (6 months history)
 ├── pdf_report.py               # PDF inspection report generator
+├── theme.py                    # Shared theme module: colors, CSS, Plotly layout
+├── .streamlit/
+│   └── config.toml             # Native Streamlit theme (dark default) + server config
 ├── assets/
-│   └── logo_placeholder.png    # TTS logo (replace with real logo)
+│   └── logo.png                # TTS logo (navy bg container for visibility)
 └── pages/
-    ├── 1_📊_Dashboard.py       # Key metrics, alerts, financial snapshot
-    ├── 2_🔴_Overdue.py         # Overdue inspections with scheduling
-    ├── 3_📋_Inspect.py         # Submit inspection + PDF + complaint creation
-    ├── 4_👥_Clients.py         # Client & building directory with financials
-    ├── 5_📈_Reports.py         # Monthly summary reports (6 months)
-    └── 6_💰_Financials.py      # Financial tally
+    ├── 1_📊_Dashboard.py       # Key metrics, alerts, financial snapshot, Plotly charts
+    ├── 2_🔴_Overdue.py         # Overdue inspections with scheduling + severity gauge
+    ├── 3_📋_Inspect.py         # Submit inspection + PDF + complaint + pass rate gauge
+    ├── 4_👥_Clients.py         # Client directory with mini donut charts
+    ├── 5_📈_Reports.py         # Monthly reports with Plotly bars + compliance gauge
+    └── 6_💰_Financials.py      # Revenue dashboard with donut + bar charts
 ```
 
 ---
@@ -318,12 +327,13 @@ clients (1) ──── (N) complaints ──── (1) buildings
 - Quick navigation cards to each section
 
 **Sidebar (visible on all pages):**
-- TTS logo + "TTS Guard" branding with fire icon
-- "Talent Technical Services"
+- TTS logo on navy background (falls back to styled text if missing)
+- "Talent Technical Services" caption
 - Today's date (dynamic)
 - "Abu Dhabi, UAE"
 - "Demo Notes" expander — presenter's cheat sheet with bullet points per page
 - "Reset Demo Data" button — **two-step confirmation** (first click shows warning, second confirms)
+- Theme toggle via Streamlit's built-in Settings menu (gear icon > Theme)
 
 **Auto-initialization:** Database and seed data created on first run.
 
@@ -337,12 +347,17 @@ clients (1) ──── (N) complaints ──── (1) buildings
 | Due Within 14 Days | Count |
 | Completed This Month | Count |
 
+**Inspection Status Distribution (Plotly stacked horizontal bar):**
+- Three segments: Overdue (red), Due Soon (orange), On Track (green)
+- Horizontal legend above chart
+- Interactive hover showing count per segment
+
 **Alert Banner:**
 - If overdue > 0: red error box — "X inspections overdue — Risk of Civil Defence non-compliance"
 
 **Financial Health Section (prominent):**
 - 4 financial metric cards: Total Contract Value, Collected, Outstanding, Overdue Payments
-- Collection rate progress bar with percentage
+- **Collection rate donut chart (Plotly):** Collected vs Outstanding with percentage annotation in center
 - Links to full Financials page for detail
 
 **Two Columns:**
@@ -363,6 +378,7 @@ clients (1) ──── (N) complaints ──── (1) buildings
 - Client name
 - Area
 - Days overdue (big red metric with negative delta)
+- **Severity gauge (Plotly):** Visual indicator showing how far past due (green/orange/red zones)
 - Last inspection date
 - Equipment count
 - Contract value
@@ -383,6 +399,7 @@ clients (1) ──── (N) complaints ──── (1) buildings
 - Click to expand each group to see individual items with checkboxes
 - Default: all checked (passed)
 - Dynamic pass/fail counter at top showing totals
+- **Pass rate gauge (Plotly):** Real-time gauge that updates as checkboxes toggle — green (≥80%), orange (50-80%), red (<50%) with threshold marker at 80%
 
 **Submission:**
 - Notes text area
@@ -430,6 +447,7 @@ clients (1) ──── (N) complaints ──── (1) buildings
 - Buildings table: Building Name | Area | Equipment Count | Last Inspection | Contract Value | Status
 - Total contract value for client
 - Per-client financial summary (paid vs outstanding)
+- **Mini donut chart (Plotly):** Paid vs Outstanding with percentage annotation per client
 
 ### 6.6 Reports (`5_📈_Reports.py`) — P1
 
@@ -442,9 +460,10 @@ clients (1) ──── (N) complaints ──── (1) buildings
 - Compliance rate (% completed on time)
 - Complaints received vs resolved
 
-**Charts:**
-- Bar chart: inspections per client
-- Bar chart: complaints by priority
+**Charts (Plotly interactive):**
+- Bar chart: inspections per client (theme-aware colors)
+- Bar chart: complaints by priority (red/orange/green color coding)
+- Compliance rate gauge: percentage of on-time inspections
 
 ### 6.7 Financial Tally (`6_💰_Financials.py`) — P1
 
@@ -456,8 +475,11 @@ clients (1) ──── (N) complaints ──── (1) buildings
 | Outstanding | AED amount with invoice count |
 | Overdue Payments | AED amount with overdue count (red) |
 
-**Collection Rate Progress Bar:**
-- Visual progress showing collection percentage
+**Collection Rate Donut (Plotly):**
+- Collected vs Outstanding with percentage annotation in center
+
+**Client Revenue Breakdown (Plotly horizontal bar):**
+- Client-wise revenue breakdown sorted by value
 
 **Client Financial Summary Table:**
 - Columns: Client | Contract Value (AED) | Paid (AED) | Outstanding (AED) | Status
@@ -466,8 +488,8 @@ clients (1) ──── (N) complaints ──── (1) buildings
 **Recent Payments:**
 - Table: Date | Client | Building | Amount (AED) | Method | Reference | Status
 
-**Monthly Collections Chart:**
-- Bar/line chart showing monthly revenue for last 6-12 months
+**Monthly Collections Chart (Plotly bar):**
+- Monthly revenue trend for last 6-12 months with theme-aware colors
 
 **Outstanding Invoices (Expandable):**
 - Table: Client | Building | Contract Value | Amount Due | Due Date | Days Overdue | Status
@@ -536,34 +558,96 @@ AED 15,000 — 55,000/year (proportional to building size)
 
 ## 8. UI/UX Requirements
 
-### 8.1 Color System — Fire Gradient Theme
-| Color | Hex | Usage |
+### 8.1 Theme Architecture — Native Dark/Light Mode
+
+**Approach:** Streamlit's native `config.toml` theme handles base colors (background, text, sidebar). This eliminates the white→dark flash that occurs with CSS-injection-only approaches. Decorative CSS (gradients, shadows, hovers) is layered on top via `theme.py`.
+
+**Theme toggle:** Users switch via Streamlit's built-in Settings menu (gear icon > Theme). No custom toggle button — avoids flash and leverages native rendering.
+
+**Config.toml (applied before first paint):**
+```toml
+[theme]
+primaryColor = "#ff6600"
+base = "dark"
+backgroundColor = "#0e1117"
+secondaryBackgroundColor = "#1a1f2e"
+textColor = "#e0e0e0"
+```
+
+### 8.2 Color System — Dual Theme
+
+**Dark Mode (default):**
+| Token | Hex | Usage |
 |-------|-----|-------|
-| Primary (Fire Red) | #D32F2F | Headers, primary actions, branding |
-| Gradient end (Orange) | #FF6F00 | Gradient accents, hover states |
-| Alert Red | #FF4B4B | Overdue, alerts, non-compliance |
-| Amber | #FFA500 | Due soon, partial payment, warnings |
-| Success Green | #00C853 | Completed, all clear, fully paid |
-| Background | #FAFAFA | Page background |
-| Text | #212121 | Primary text (charcoal) |
+| Background | #0e1117 | Page background (config.toml) |
+| Secondary BG | #1a1f2e | Sidebar, card backgrounds (config.toml) |
+| Text | #e0e0e0 | Primary text (config.toml) |
+| Text Muted | #9ca3af | Captions, secondary text |
+| Primary / Orange | #ff6600 | Buttons, accents, metric values, chart primary |
+| Header Gradient | #ff6600 → #ff8c3a | Section header gradient (`.fire-header`) |
+| Status Red | #ff4444 | Overdue, alerts, chart tertiary |
+| Status Green | #34d399 | Completed, on-track, chart secondary |
+| Chart Quaternary | #a78bfa | Purple accent for 4th data series |
+| Border | #2a2f3a | Grid lines, dividers |
 
-**Theme direction:** White base with warm red-to-orange gradient accents — energetic, distinctly fire safety themed. Reference: ttsuae.com uses clean white/grey; the fire gradient adds identity.
+**Light Mode:**
+| Token | Hex | Usage |
+|-------|-----|-------|
+| Background | #ffffff | Page background |
+| Secondary BG | #f8f8fa | Sidebar, card backgrounds |
+| Text | #222222 | Primary text |
+| Text Muted | #777777 | Captions, secondary text |
+| Primary / Navy | #012f5d | Buttons, accents, metric values, chart primary |
+| Header Gradient | #012f5d → #ff6600 | Section header gradient |
+| Status Red | #e60000 | Overdue, alerts |
+| Status Green | #00C853 | Completed, on-track |
+| Chart Quaternary | #ff6600 | Orange accent for 4th data series |
+| Border | #e5e5e5 | Grid lines, dividers |
 
-### 8.2 Layout
+### 8.3 Shared Theme Module (`theme.py`)
+
+Provides centralized theme management consumed by all pages:
+- **`is_dark_mode()`** — Detects active theme from `st.get_option("theme.base")`
+- **`get_colors()`** — Returns dict of color tokens (dark/light variants) for charts and decorative elements
+- **`inject_css()`** — Injects decorative-only CSS (gradients, shadows, hovers, fonts, button accents). Does NOT set background or text colors (handled by config.toml)
+- **`plotly_layout()`** — Returns Plotly layout kwargs with transparent backgrounds and theme-aware styling
+
+**Decorative CSS includes:**
+- Google Fonts (Roboto headings, Open Sans body)
+- Top header gradient bar (navy → orange)
+- Gradient section headers (`.fire-header`)
+- Metric card left-border accent + box shadow
+- Hero stat card and nav card hover effects
+- Orange button styling with hover state
+- Progress bar color override
+- Active tab accent color
+- Alert border accents
+
+### 8.4 Interactive Charts (Plotly)
+
+All charts use Plotly with transparent backgrounds (`paper_bgcolor: rgba(0,0,0,0)`) and theme-aware colors from `get_colors()`. Charts are fully interactive with hover tooltips.
+
+| Page | Chart Type | Purpose |
+|------|-----------|---------|
+| Dashboard | Stacked horizontal bar | Inspection status distribution (overdue/due/on-track) |
+| Dashboard | Donut chart | Collection rate with percentage annotation |
+| Overdue | Gauge | Severity indicator per overdue building |
+| Inspect | Gauge | Real-time pass rate (updates as checkboxes toggle) |
+| Clients | Mini donut per client | Paid vs outstanding per client |
+| Reports | Bar chart | Inspections per client |
+| Reports | Bar chart | Complaints by priority |
+| Reports | Gauge | Monthly compliance rate |
+| Financials | Donut chart | Collection rate overview |
+| Financials | Horizontal bar | Client revenue breakdown |
+| Financials | Bar chart | Monthly collections trend |
+
+### 8.5 Layout
 - Wide mode enabled
 - Responsive columns for metric cards
 - Clean tables with good spacing
 - Professional feel — must look like real business software, not a tutorial project
-- Fire gradient applied to headers, sidebar accents, and metric card borders
-
-### 8.3 Custom CSS
-Applied via `st.markdown` with `unsafe_allow_html=True`:
-- Fire gradient header bars
-- Polished metric cards with colored left borders
-- Color-coded status indicators
-- Clean dataframe styling
-- Consistent spacing and borders
-- Gradient accent on sidebar branding
+- Gradient headers, card shadows, and metric accents for visual polish
+- Dark theme by default for modern look; light mode available via Settings
 
 ---
 
@@ -572,16 +656,19 @@ Applied via `st.markdown` with `unsafe_allow_html=True`:
 | Requirement | Detail |
 |-------------|--------|
 | Offline operation | 100% functional with seed data, no external APIs |
-| Single-command startup | `streamlit run app.py` |
+| Single-command startup | `streamlit run app.py` or `docker run -p 8501:8501 tts-guard` |
+| Docker deployment | `Dockerfile` with python:3.11-slim, health check, port 8501 |
 | Auto-initialization | Database and seed data created on first run |
 | Demo data reset | Sidebar button with two-step confirmation re-seeds all data |
+| Dark/light mode | Native Streamlit theming via config.toml (no flash on load or toggle) |
 | Currency | All values in AED |
 | Phone format | UAE format (+971...) |
 | Date handling | **Dynamic** — all dates computed relative to today (not a frozen date). Seed data uses offsets from today so the demo stays fresh regardless of when it's opened. |
 | Seed data depth | 6 months of historical inspection and payment data for rich reports and charts |
 | Database | SQLite single file (tts_guard.db) in project root |
+| Interactive charts | All charts use Plotly with hover tooltips and transparent backgrounds |
 | Guided tour | "Take a Tour" button on welcome page walks through key features with callouts |
-| Logo | Placeholder in assets/ — user will replace with real TTS logo |
+| Logo | TTS logo in assets/ with navy background container for dark/light mode visibility |
 
 ---
 

@@ -1,32 +1,32 @@
 """
 TTS Guard — Shared Theme Module
-Provides theme-aware color tokens, CSS injection, and Plotly layout helpers.
+Provides color tokens for Plotly charts and decorative CSS.
+Base colors (background, text, sidebar) are handled by .streamlit/config.toml.
 """
 
 import streamlit as st
 
 
 def is_dark_mode():
-    """Check current theme from session state. Defaults to True (dark)."""
-    if "dark_mode" not in st.session_state:
-        st.session_state.dark_mode = True
-    return st.session_state.dark_mode
+    """Check active theme. Config.toml defaults to dark."""
+    try:
+        return st.get_option("theme.base") != "light"
+    except Exception:
+        return True
 
 
 def get_colors():
-    """Return a dict of all color tokens based on current theme."""
+    """Return color tokens for charts, gradients, and decorative elements."""
     dark = is_dark_mode()
     if dark:
         return {
-            "BG": "#0e1117", "BG2": "#1a1f2e", "SIDEBAR_BG": "#131720",
+            "BG": "#0e1117", "BG2": "#1a1f2e",
             "BORDER": "#2a2f3a", "TEXT": "#e0e0e0", "TEXT_MUTED": "#9ca3af",
             "CARD_BG": "#1a1f2e", "METRIC_VAL": "#ff6600", "METRIC_ACCENT": "#ff6600",
             "HEADER_HEAD": "#ff6600", "HEADER_TAIL": "#ff8c3a",
             "SHADOW": "rgba(0,0,0,0.3)", "HOVER_SHADOW": "rgba(255,102,0,0.15)",
-            "BTN_HOVER_TEXT": "#0e1117", "DIVIDER": "#2a2f3a",
+            "BTN_HOVER_TEXT": "#0e1117",
             "STATUS_RED": "#ff4444", "STATUS_GREEN": "#34d399",
-            "TOPBAR": "linear-gradient(90deg, #0a1628, #012f5d 60%, #ff6600)",
-            # Chart palette
             "CHART_PRIMARY": "#ff6600",
             "CHART_SECONDARY": "#34d399",
             "CHART_TERTIARY": "#ff4444",
@@ -35,15 +35,13 @@ def get_colors():
         }
     else:
         return {
-            "BG": "#ffffff", "BG2": "#f8f8fa", "SIDEBAR_BG": "#f8f8fa",
+            "BG": "#ffffff", "BG2": "#f8f8fa",
             "BORDER": "#e5e5e5", "TEXT": "#222222", "TEXT_MUTED": "#777777",
             "CARD_BG": "#ffffff", "METRIC_VAL": "#012f5d", "METRIC_ACCENT": "#012f5d",
             "HEADER_HEAD": "#012f5d", "HEADER_TAIL": "#ff6600",
             "SHADOW": "rgba(0,0,0,0.05)", "HOVER_SHADOW": "rgba(1,47,93,0.12)",
-            "BTN_HOVER_TEXT": "#ffffff", "DIVIDER": "#e5e5e5",
+            "BTN_HOVER_TEXT": "#ffffff",
             "STATUS_RED": "#e60000", "STATUS_GREEN": "#00C853",
-            "TOPBAR": "linear-gradient(90deg, #012f5d, #012f5d 70%, #ff6600)",
-            # Chart palette
             "CHART_PRIMARY": "#012f5d",
             "CHART_SECONDARY": "#00C853",
             "CHART_TERTIARY": "#e60000",
@@ -53,76 +51,38 @@ def get_colors():
 
 
 def inject_css():
-    """Inject the full TTS Guard CSS. Call at the top of every page."""
+    """Inject only decorative CSS that config.toml cannot handle."""
     c = get_colors()
     st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600&display=swap');
 
+    /* Typography */
     html, body, [class*="css"] {{
         font-family: 'Open Sans', sans-serif;
-        color: {c['TEXT']};
     }}
     h1, h2, h3, h4, h5, h6 {{
         font-family: 'Roboto', sans-serif !important;
-        color: {c['TEXT']} !important;
     }}
-    .stApp {{
-        background-color: {c['BG']} !important;
-        color: {c['TEXT']} !important;
-    }}
+
+    /* Top header gradient bar */
     .stApp > header {{
-        background: {c['TOPBAR']} !important;
+        background: linear-gradient(90deg, #0a1628, #012f5d 60%, #ff6600) !important;
     }}
+
+    /* Metric card accent styling */
     [data-testid="stMetricValue"] {{
         font-size: 1.8rem; font-weight: 700;
         font-family: 'Roboto', sans-serif !important;
         color: {c['METRIC_VAL']} !important;
     }}
-    [data-testid="stMetricLabel"] {{
-        color: {c['TEXT_MUTED']} !important;
-    }}
-    [data-testid="stSidebar"] {{
-        background-color: {c['SIDEBAR_BG']};
-        border-right: 1px solid {c['BORDER']};
-        color: {c['TEXT']};
-    }}
-    .stDataFrame {{ border-radius: 8px; }}
-
-    /* Markdown content text */
-    [data-testid="stMarkdownContainer"] p,
-    [data-testid="stMarkdownContainer"] li,
-    [data-testid="stMarkdownContainer"] strong,
-    [data-testid="stMarkdownContainer"] code {{
-        color: {c['TEXT']};
-    }}
-
-    /* Captions */
-    [data-testid="stCaption"] {{
-        color: {c['TEXT_MUTED']} !important;
-    }}
-
-    /* Form labels and inputs */
-    label {{
-        color: {c['TEXT']} !important;
-    }}
-    [data-baseweb="input"] input,
-    [data-baseweb="textarea"] textarea,
-    [data-baseweb="select"] div {{
-        color: {c['TEXT']} !important;
-    }}
-
-    /* Expander body text */
-    [data-testid="stExpander"] details {{
-        color: {c['TEXT']};
-    }}
     div[data-testid="stMetric"] {{
-        background-color: {c['CARD_BG']};
-        border: 1px solid {c['BORDER']};
         border-left: 4px solid {c['METRIC_ACCENT']};
-        padding: 12px 16px; border-radius: 8px;
+        border-radius: 8px;
         box-shadow: 0px 2px 10px {c['SHADOW']};
     }}
+
+    /* Gradient section headers */
     .fire-header {{
         background: linear-gradient(90deg, {c['HEADER_HEAD']}, {c['HEADER_TAIL']});
         -webkit-background-clip: text;
@@ -130,13 +90,11 @@ def inject_css():
         font-weight: 700;
         font-family: 'Roboto', sans-serif !important;
     }}
-    .status-overdue {{ color: {c['STATUS_RED']}; font-weight: 600; }}
-    .status-due-soon {{ color: #ff6600; font-weight: 600; }}
-    .status-ok {{ color: {c['STATUS_GREEN']}; font-weight: 600; }}
+
+    /* Hero stat cards (welcome page) */
     .hero-stat {{
         text-align: center; padding: 20px;
-        background: {c['CARD_BG']}; border-radius: 10px;
-        border: 1px solid {c['BORDER']};
+        border-radius: 10px;
         box-shadow: 0px 4px 15px {c['SHADOW']};
         transition: all 0.3s ease;
     }}
@@ -151,9 +109,10 @@ def inject_css():
     .hero-stat p {{
         color: {c['TEXT_MUTED']}; margin: 4px 0 0 0; font-size: 0.9rem;
     }}
+
+    /* Navigation cards (welcome page) */
     .nav-card {{
-        padding: 18px; background: {c['CARD_BG']}; border-radius: 10px;
-        border: 1px solid {c['BORDER']}; text-align: center;
+        padding: 18px; border-radius: 10px; text-align: center;
         transition: all 0.3s ease;
         box-shadow: 0px 2px 10px {c['SHADOW']};
     }}
@@ -163,12 +122,14 @@ def inject_css():
         transform: translateY(-2px);
     }}
     .nav-card h3 {{
-        margin: 8px 0 4px 0; font-size: 1rem; color: {c['TEXT']};
+        margin: 8px 0 4px 0; font-size: 1rem;
         font-family: 'Roboto', sans-serif !important;
     }}
     .nav-card p {{
         color: {c['TEXT_MUTED']}; font-size: 0.8rem; margin: 0;
     }}
+
+    /* Orange button styling */
     .stButton > button {{
         border-color: #ff6600; color: #ff6600; transition: all 0.3s ease;
     }}
@@ -176,24 +137,33 @@ def inject_css():
         background-color: #ff6600; color: {c['BTN_HOVER_TEXT']};
         border-color: #ff6600;
     }}
+
+    /* Progress bar */
     .stProgress > div > div > div {{
         background-color: #ff6600 !important;
     }}
+
+    /* Expander header font */
     .streamlit-expanderHeader {{
         font-family: 'Roboto', sans-serif !important;
-        color: {c['TEXT']} !important;
     }}
+
+    /* Active tab accent */
     .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {{
         color: #ff6600 !important;
         border-bottom-color: #ff6600 !important;
     }}
-    hr {{ border-color: {c['DIVIDER']} !important; }}
+
+    /* Alert accents */
     .stAlert [data-testid="stNotificationContentWarning"] {{
         border-left-color: #ff6600 !important;
     }}
     .stAlert [data-testid="stNotificationContentError"] {{
         border-left-color: {c['STATUS_RED']} !important;
     }}
+
+    /* DataFrame rounding */
+    .stDataFrame {{ border-radius: 8px; }}
 </style>
 """, unsafe_allow_html=True)
 
