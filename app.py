@@ -195,34 +195,40 @@ st.markdown("### Quick Navigation")
 col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown(
+        '<a href="Dashboard" target="_self" style="text-decoration:none;">'
         '<div class="nav-card"><h3>📊 Dashboard</h3>'
-        "<p>Metrics, alerts & overview</p></div>",
+        "<p>Metrics, alerts & overview</p></div></a>",
         unsafe_allow_html=True,
     )
     st.markdown(
+        '<a href="Overdue" target="_self" style="text-decoration:none;">'
         '<div class="nav-card"><h3>🔴 Overdue</h3>'
-        "<p>Schedule overdue inspections</p></div>",
+        "<p>Schedule overdue inspections</p></div></a>",
         unsafe_allow_html=True,
     )
 with col2:
     st.markdown(
+        '<a href="Inspect" target="_self" style="text-decoration:none;">'
         '<div class="nav-card"><h3>📋 Inspect</h3>'
-        "<p>Submit inspections & PDF reports</p></div>",
+        "<p>Submit inspections & PDF reports</p></div></a>",
         unsafe_allow_html=True,
     )
     st.markdown(
+        '<a href="Clients" target="_self" style="text-decoration:none;">'
         '<div class="nav-card"><h3>👥 Clients</h3>'
-        "<p>Client & building directory</p></div>",
+        "<p>Client & building directory</p></div></a>",
         unsafe_allow_html=True,
     )
 with col3:
     st.markdown(
+        '<a href="Reports" target="_self" style="text-decoration:none;">'
         '<div class="nav-card"><h3>📈 Reports</h3>'
-        "<p>Monthly compliance summaries</p></div>",
+        "<p>Monthly compliance summaries</p></div></a>",
         unsafe_allow_html=True,
     )
     st.markdown(
+        '<a href="Financials" target="_self" style="text-decoration:none;">'
         '<div class="nav-card"><h3>💰 Financials</h3>'
-        "<p>Revenue & payment tracking</p></div>",
+        "<p>Revenue & payment tracking</p></div></a>",
         unsafe_allow_html=True,
     )
