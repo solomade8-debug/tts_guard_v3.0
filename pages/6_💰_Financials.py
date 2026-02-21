@@ -1,11 +1,12 @@
 """
 TTS Guard — Financials Page
 Revenue tracking, payment status, collection rate, client breakdown,
-payment history, and outstanding invoices.
+payment history, and outstanding invoices with interactive Plotly charts.
 """
 
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 from database import (
     get_financial_summary,
     get_client_financial_breakdown,
@@ -13,6 +14,10 @@ from database import (
     get_monthly_revenue,
     get_outstanding_invoices,
 )
+from theme import get_colors, inject_css, plotly_layout
+
+c = get_colors()
+inject_css()
 
 st.markdown(
     '<h1 class="fire-header">💰 Financial Overview</h1>',
@@ -54,26 +59,49 @@ with col4:
     )
 
 # ---------------------------------------------------------------------------
-# COLLECTION RATE PROGRESS BAR
+# COLLECTION BREAKDOWN DONUT
 # ---------------------------------------------------------------------------
 collection_pct = financials["collection_pct"]
-st.progress(
-    min(collection_pct / 100, 1.0),
-    text=f"Collection Rate: {collection_pct:.1f}%",
-)
+collected = financials["total_collected"]
+outstanding_val = financials["total_outstanding"]
+overdue_val = financials["total_overdue"]
+pending_val = max(outstanding_val - overdue_val, 0)
+
+fig_donut = go.Figure(data=[go.Pie(
+    labels=["Collected", "Pending", "Overdue"],
+    values=[collected, pending_val, overdue_val],
+    hole=0.6,
+    marker_colors=[c["CHART_SECONDARY"], c["CHART_PRIMARY"], c["CHART_TERTIARY"]],
+    textinfo="percent+label",
+    textfont={"color": c["TEXT"]},
+    hovertemplate="<b>%{label}</b><br>AED %{value:,.0f}<br>%{percent}<extra></extra>",
+)])
+fig_donut.update_layout(**plotly_layout(
+    height=350,
+    title_text=f"Collection Rate: {collection_pct:.1f}%",
+    showlegend=True,
+    annotations=[{
+        "text": f"AED {collected:,.0f}",
+        "x": 0.5, "y": 0.5, "font_size": 16,
+        "font_color": c["CHART_PRIMARY"],
+        "showarrow": False,
+    }],
+))
+st.plotly_chart(fig_donut, use_container_width=True)
 
 st.divider()
 
 # ---------------------------------------------------------------------------
-# CLIENT FINANCIAL SUMMARY TABLE
+# CLIENT FINANCIAL SUMMARY TABLE + HORIZONTAL BAR
 # ---------------------------------------------------------------------------
 st.subheader("📊 Client Financial Summary")
 
-client_fin = get_client_financial_breakdown()
-if len(client_fin) > 0:
-    # Format currency columns
+client_fin_raw = get_client_financial_breakdown()
+if len(client_fin_raw) > 0:
+    # Display copy with formatted currency
+    client_fin_display = client_fin_raw.copy()
     for col_name in ["Contract Value (AED)", "Paid (AED)", "Outstanding (AED)"]:
-        client_fin[col_name] = client_fin[col_name].apply(lambda x: f"AED {x:,.0f}")
+        client_fin_display[col_name] = client_fin_display[col_name].apply(lambda x: f"AED {x:,.0f}")
 
     # Color-code status
     def style_status(status):
@@ -84,9 +112,38 @@ if len(client_fin) > 0:
         else:
             return f"🟡 {status}"
 
-    client_fin["Status"] = client_fin["Status"].apply(style_status)
+    client_fin_display["Status"] = client_fin_display["Status"].apply(style_status)
 
-    st.dataframe(client_fin, use_container_width=True, hide_index=True)
+    st.dataframe(client_fin_display, use_container_width=True, hide_index=True)
+
+    # Stacked horizontal bar — paid vs outstanding per client
+    st.subheader("📊 Client Revenue Breakdown")
+    fig_hbar = go.Figure()
+    fig_hbar.add_trace(go.Bar(
+        y=client_fin_raw["Client"],
+        x=client_fin_raw["Paid (AED)"],
+        name="Paid",
+        orientation="h",
+        marker_color=c["CHART_SECONDARY"],
+        hovertemplate="<b>%{y}</b><br>Paid: AED %{x:,.0f}<extra></extra>",
+    ))
+    fig_hbar.add_trace(go.Bar(
+        y=client_fin_raw["Client"],
+        x=client_fin_raw["Outstanding (AED)"],
+        name="Outstanding",
+        orientation="h",
+        marker_color=c["CHART_TERTIARY"],
+        hovertemplate="<b>%{y}</b><br>Outstanding: AED %{x:,.0f}<extra></extra>",
+    ))
+    fig_hbar.update_layout(**plotly_layout(
+        height=300,
+        barmode="stack",
+        xaxis_title="Amount (AED)",
+        xaxis_tickformat=",",
+        yaxis_title="",
+        legend={"orientation": "h", "y": 1.1},
+    ))
+    st.plotly_chart(fig_hbar, use_container_width=True)
 
 st.divider()
 
@@ -97,9 +154,19 @@ st.subheader("📈 Monthly Collections")
 
 monthly_rev = get_monthly_revenue(6)
 if len(monthly_rev) > 0:
-    chart_data = monthly_rev.set_index("month")
-    chart_data.columns = ["Amount (AED)"]
-    st.bar_chart(chart_data, color="#ff6600")
+    fig_monthly = go.Figure(data=[go.Bar(
+        x=monthly_rev["month"],
+        y=monthly_rev["total"],
+        marker_color=c["CHART_PRIMARY"],
+        hovertemplate="<b>%{x}</b><br>AED %{y:,.0f}<extra></extra>",
+    )])
+    fig_monthly.update_layout(**plotly_layout(
+        height=350,
+        xaxis_title="Month",
+        yaxis_title="Amount (AED)",
+        yaxis_tickformat=",",
+    ))
+    st.plotly_chart(fig_monthly, use_container_width=True)
 else:
     st.info("No payment data available for chart.")
 

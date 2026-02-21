@@ -1,16 +1,21 @@
 """
 TTS Guard — Reports Page
-Monthly compliance reports with charts (6 months depth).
+Monthly compliance reports with interactive Plotly charts (6 months depth).
 """
 
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 from datetime import date
 from database import (
     get_inspections_by_month,
     get_complaints_by_month,
     get_all_clients,
 )
+from theme import get_colors, inject_css, plotly_layout
+
+c = get_colors()
+inject_css()
 
 st.markdown(
     '<h1 class="fire-header">📈 Reports</h1>',
@@ -72,6 +77,32 @@ with col4:
         f"{resolved_complaints}/{total_complaints} resolved",
     )
 
+# ---------------------------------------------------------------------------
+# COMPLIANCE RATE GAUGE
+# ---------------------------------------------------------------------------
+if total_equipment > 0:
+    gauge_color = c["CHART_SECONDARY"] if compliance_rate >= 80 else (
+        c["CHART_PRIMARY"] if compliance_rate >= 50 else c["STATUS_RED"]
+    )
+    fig_compliance = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=compliance_rate,
+        number={"suffix": "%", "font": {"color": gauge_color, "size": 32}},
+        gauge={
+            "axis": {"range": [0, 100], "tickcolor": c["TEXT_MUTED"]},
+            "bar": {"color": gauge_color},
+            "bgcolor": c["BORDER"],
+            "steps": [
+                {"range": [0, 60], "color": "rgba(255,68,68,0.1)"},
+                {"range": [60, 80], "color": "rgba(255,102,0,0.1)"},
+                {"range": [80, 100], "color": "rgba(52,211,153,0.1)"},
+            ],
+        },
+        title={"text": "Compliance Rate", "font": {"color": c["TEXT_MUTED"]}},
+    ))
+    fig_compliance.update_layout(**plotly_layout(height=250))
+    st.plotly_chart(fig_compliance, use_container_width=True)
+
 st.divider()
 
 # ---------------------------------------------------------------------------
@@ -87,8 +118,18 @@ with chart_left:
             .size()
             .reset_index(name="Inspections")
         )
-        by_client = by_client.set_index("client_name")
-        st.bar_chart(by_client, color="#012f5d")
+        fig_client = go.Figure(data=[go.Bar(
+            x=by_client["client_name"],
+            y=by_client["Inspections"],
+            marker_color=c["CHART_PRIMARY"],
+            hovertemplate="<b>%{x}</b><br>Inspections: %{y}<extra></extra>",
+        )])
+        fig_client.update_layout(**plotly_layout(
+            height=350,
+            xaxis_title="",
+            yaxis_title="Inspections",
+        ))
+        st.plotly_chart(fig_client, use_container_width=True)
     else:
         st.info(f"No inspections recorded for {label}.")
 
@@ -100,12 +141,30 @@ with chart_right:
             .size()
             .reset_index(name="Count")
         )
-        # Order priorities
         priority_order = {"high": 0, "medium": 1, "low": 2}
         by_priority["order"] = by_priority["priority"].map(priority_order)
         by_priority = by_priority.sort_values("order").drop(columns=["order"])
-        by_priority = by_priority.set_index("priority")
-        st.bar_chart(by_priority, color="#ff6600")
+
+        # Semantic colors per priority
+        priority_colors = {
+            "high": c["STATUS_RED"],
+            "medium": c["CHART_PRIMARY"],
+            "low": c["CHART_SECONDARY"],
+        }
+        bar_colors = [priority_colors.get(p, c["CHART_QUATERNARY"]) for p in by_priority["priority"]]
+
+        fig_priority = go.Figure(data=[go.Bar(
+            x=by_priority["priority"],
+            y=by_priority["Count"],
+            marker_color=bar_colors,
+            hovertemplate="<b>%{x}</b><br>Count: %{y}<extra></extra>",
+        )])
+        fig_priority.update_layout(**plotly_layout(
+            height=350,
+            xaxis_title="",
+            yaxis_title="Complaints",
+        ))
+        st.plotly_chart(fig_priority, use_container_width=True)
     else:
         st.info(f"No complaints recorded for {label}.")
 

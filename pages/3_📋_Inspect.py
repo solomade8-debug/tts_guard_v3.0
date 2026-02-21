@@ -4,6 +4,7 @@ Submit inspections with grouped equipment, PDF download, and complaint creation.
 """
 
 import streamlit as st
+import plotly.graph_objects as go
 from datetime import date
 from database import (
     get_all_buildings,
@@ -15,6 +16,10 @@ from database import (
     TECHNICIANS,
 )
 from pdf_report import generate_inspection_pdf
+from theme import get_colors, inject_css, plotly_layout
+
+c = get_colors()
+inject_css()
 
 st.markdown(
     '<h1 class="fire-header">📋 Submit Inspection</h1>',
@@ -82,6 +87,39 @@ with pcol2:
     st.metric("✅ Passed", passed)
 with pcol3:
     st.metric("⚠️ Failed", failed, delta_color="inverse" if failed > 0 else "off")
+
+# Pass rate gauge (updates in real-time as checkboxes toggle)
+pass_rate = (passed / total * 100) if total > 0 else 100
+gauge_color = c["CHART_SECONDARY"] if pass_rate >= 80 else (
+    c["CHART_PRIMARY"] if pass_rate >= 50 else c["STATUS_RED"]
+)
+
+fig_gauge = go.Figure(go.Indicator(
+    mode="gauge+number",
+    value=pass_rate,
+    number={"suffix": "%", "font": {"color": gauge_color, "size": 36}},
+    gauge={
+        "axis": {"range": [0, 100], "tickcolor": c["TEXT_MUTED"]},
+        "bar": {"color": gauge_color},
+        "bgcolor": c["BORDER"],
+        "steps": [
+            {"range": [0, 50], "color": "rgba(255,68,68,0.15)"},
+            {"range": [50, 80], "color": "rgba(255,102,0,0.15)"},
+            {"range": [80, 100], "color": "rgba(52,211,153,0.15)"},
+        ],
+        "threshold": {
+            "line": {"color": c["STATUS_RED"], "width": 2},
+            "thickness": 0.75,
+            "value": 80,
+        },
+    },
+    title={"text": "Pass Rate", "font": {"color": c["TEXT_MUTED"], "size": 14}},
+))
+fig_gauge.update_layout(**plotly_layout(
+    height=220,
+    margin={"l": 30, "r": 30, "t": 40, "b": 0},
+))
+st.plotly_chart(fig_gauge, use_container_width=True)
 
 st.markdown("---")
 

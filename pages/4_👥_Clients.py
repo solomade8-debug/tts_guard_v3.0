@@ -1,9 +1,10 @@
 """
 TTS Guard — Clients Page
-Client directory with buildings, equipment, and per-client financials.
+Client directory with buildings, equipment, per-client financials and mini charts.
 """
 
 import streamlit as st
+import plotly.graph_objects as go
 from datetime import date
 from database import (
     get_all_clients,
@@ -11,6 +12,10 @@ from database import (
     get_client_financial_detail,
     get_overdue_inspections,
 )
+from theme import get_colors, inject_css, plotly_layout
+
+c = get_colors()
+inject_css()
 
 st.markdown(
     '<h1 class="fire-header">👥 Client Directory</h1>',
@@ -35,12 +40,12 @@ for _, client in clients_df.iterrows():
     ):
         # Contact info
         st.markdown("**Contact Information**")
-        c1, c2, c3 = st.columns(3)
-        with c1:
+        ci1, ci2, ci3 = st.columns(3)
+        with ci1:
             st.markdown(f"👤 {client['contact_person']}")
-        with c2:
+        with ci2:
             st.markdown(f"📞 {client['phone']}")
-        with c3:
+        with ci3:
             st.markdown(f"✉️ {client['email']}")
 
         st.divider()
@@ -86,26 +91,56 @@ for _, client in clients_df.iterrows():
 
         st.divider()
 
-        # Financial summary
+        # Financial summary with mini donut
         st.markdown("**Financial Summary**")
-        f1, f2, f3 = st.columns(3)
-        with f1:
-            st.metric("Contract Value", f"AED {financials['total_value']:,.0f}")
-        with f2:
-            st.metric("Paid", f"AED {financials['total_paid']:,.0f}")
-        with f3:
-            outstanding = financials["outstanding"]
-            if outstanding > 0:
-                st.metric(
-                    "Outstanding",
-                    f"AED {outstanding:,.0f}",
-                    delta=f"AED {outstanding:,.0f} pending",
-                    delta_color="inverse",
-                )
-            else:
-                st.metric(
-                    "Outstanding",
-                    "AED 0",
-                    delta="Fully paid",
-                    delta_color="normal",
-                )
+        fin_left, fin_right = st.columns([2, 1])
+
+        with fin_left:
+            f1, f2, f3 = st.columns(3)
+            with f1:
+                st.metric("Contract Value", f"AED {financials['total_value']:,.0f}")
+            with f2:
+                st.metric("Paid", f"AED {financials['total_paid']:,.0f}")
+            with f3:
+                outstanding_amt = financials["outstanding"]
+                if outstanding_amt > 0:
+                    st.metric(
+                        "Outstanding",
+                        f"AED {outstanding_amt:,.0f}",
+                        delta=f"AED {outstanding_amt:,.0f} pending",
+                        delta_color="inverse",
+                    )
+                else:
+                    st.metric(
+                        "Outstanding",
+                        "AED 0",
+                        delta="Fully paid",
+                        delta_color="normal",
+                    )
+
+        with fin_right:
+            paid = financials["total_paid"]
+            outstanding_amt = financials["outstanding"]
+            if paid > 0 or outstanding_amt > 0:
+                pct = (paid / (paid + outstanding_amt) * 100) if (paid + outstanding_amt) > 0 else 0
+                fig_mini = go.Figure(data=[go.Pie(
+                    labels=["Paid", "Outstanding"],
+                    values=[paid, outstanding_amt],
+                    hole=0.6,
+                    marker_colors=[c["CHART_SECONDARY"], c["CHART_TERTIARY"]],
+                    textinfo="percent",
+                    textfont={"color": c["TEXT"], "size": 10},
+                    hovertemplate="<b>%{label}</b><br>AED %{value:,.0f}<extra></extra>",
+                )])
+                fig_mini.update_layout(**plotly_layout(
+                    height=180,
+                    showlegend=False,
+                    margin={"l": 0, "r": 0, "t": 10, "b": 10},
+                    annotations=[{
+                        "text": f"{pct:.0f}%",
+                        "x": 0.5, "y": 0.5, "font_size": 16,
+                        "font_color": c["CHART_PRIMARY"],
+                        "showarrow": False,
+                    }],
+                ))
+                st.plotly_chart(fig_mini, use_container_width=True, key=f"donut_{client_id}")

@@ -1,10 +1,11 @@
 """
 TTS Guard — Dashboard Page
 Key metrics, alert banner, financial health, upcoming inspections,
-recent complaints, and client overview.
+recent complaints, and client overview with interactive charts.
 """
 
 import streamlit as st
+import plotly.graph_objects as go
 from database import (
     get_active_contracts_count,
     get_overdue_inspections,
@@ -14,6 +15,10 @@ from database import (
     get_client_summary,
     get_financial_summary,
 )
+from theme import get_colors, inject_css, plotly_layout
+
+c = get_colors()
+inject_css()
 
 st.markdown(
     '<h1 class="fire-header">📊 Dashboard</h1>',
@@ -55,6 +60,46 @@ if overdue_count > 0:
         "— Risk of Civil Defence non-compliance"
     )
 
+# ---------------------------------------------------------------------------
+# INSPECTION STATUS DISTRIBUTION (stacked horizontal bar)
+# ---------------------------------------------------------------------------
+ok_count = max(contracts_count - overdue_count - upcoming_count, 0)
+
+fig_status = go.Figure()
+fig_status.add_trace(go.Bar(
+    y=["Inspections"],
+    x=[overdue_count],
+    name="Overdue",
+    orientation="h",
+    marker_color=c["CHART_TERTIARY"],
+    hovertemplate="Overdue: %{x}<extra></extra>",
+))
+fig_status.add_trace(go.Bar(
+    y=["Inspections"],
+    x=[upcoming_count],
+    name="Due Soon",
+    orientation="h",
+    marker_color=c["CHART_PRIMARY"],
+    hovertemplate="Due Soon: %{x}<extra></extra>",
+))
+fig_status.add_trace(go.Bar(
+    y=["Inspections"],
+    x=[ok_count],
+    name="On Track",
+    orientation="h",
+    marker_color=c["CHART_SECONDARY"],
+    hovertemplate="On Track: %{x}<extra></extra>",
+))
+fig_status.update_layout(**plotly_layout(
+    height=120,
+    barmode="stack",
+    showlegend=True,
+    legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
+    yaxis={"visible": False},
+    margin={"l": 0, "r": 0, "t": 30, "b": 0},
+))
+st.plotly_chart(fig_status, use_container_width=True)
+
 st.divider()
 
 # ---------------------------------------------------------------------------
@@ -91,12 +136,32 @@ with fcol4:
         delta_color="inverse",
     )
 
-# Collection rate progress bar
+# Collection rate donut chart
 collection_pct = financials["collection_pct"]
-st.progress(
-    min(collection_pct / 100, 1.0),
-    text=f"Collection Rate: {collection_pct:.1f}%",
-)
+collected = financials["total_collected"]
+outstanding = financials["total_outstanding"]
+
+fig_donut = go.Figure(data=[go.Pie(
+    labels=["Collected", "Outstanding"],
+    values=[collected, outstanding],
+    hole=0.65,
+    marker_colors=[c["CHART_SECONDARY"], c["CHART_TERTIARY"]],
+    textinfo="percent+label",
+    textfont={"color": c["TEXT"]},
+    hovertemplate="<b>%{label}</b><br>AED %{value:,.0f}<br>%{percent}<extra></extra>",
+)])
+fig_donut.update_layout(**plotly_layout(
+    height=300,
+    title_text=f"Collection Rate: {collection_pct:.1f}%",
+    showlegend=True,
+    annotations=[{
+        "text": f"{collection_pct:.0f}%",
+        "x": 0.5, "y": 0.5, "font_size": 28,
+        "font_color": c["CHART_PRIMARY"],
+        "showarrow": False,
+    }],
+))
+st.plotly_chart(fig_donut, use_container_width=True)
 
 st.caption("→ View full details on the **💰 Financials** page")
 
@@ -123,16 +188,26 @@ with right:
     st.subheader("🎫 Recent Complaints")
     complaints_df = get_recent_complaints(5)
     if len(complaints_df) > 0:
+        priority_border_map = {
+            "high": c["STATUS_RED"],
+            "medium": c["CHART_PRIMARY"],
+            "low": c["CHART_SECONDARY"],
+        }
         for _, comp in complaints_df.iterrows():
-            priority_color = {
+            priority_emoji = {
                 "high": "🔴",
                 "medium": "🟡",
                 "low": "🟢",
             }.get(comp["priority"], "⚪")
+            border_color = priority_border_map.get(comp["priority"], c["BORDER"])
 
             with st.container(border=True):
                 st.markdown(
-                    f"**{comp['ticket_number']}** {priority_color} `{comp['priority'].upper()}`"
+                    f'<div style="border-left: 4px solid {border_color}; padding-left: 8px;">'
+                    f"<strong>{comp['ticket_number']}</strong> {priority_emoji} "
+                    f"<code>{comp['priority'].upper()}</code>"
+                    f"</div>",
+                    unsafe_allow_html=True,
                 )
                 st.markdown(f"{comp['message']}")
                 st.caption(

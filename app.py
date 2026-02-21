@@ -8,6 +8,7 @@ import os
 from datetime import date
 from database import init_db, reset_db, has_data, get_active_contracts_count, get_all_clients, get_all_buildings, get_financial_summary
 from seed_data import seed
+from theme import get_colors, inject_css, is_dark_mode
 
 # ---------------------------------------------------------------------------
 # PAGE CONFIG
@@ -20,200 +21,14 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# THEME TOGGLE (persisted in session state)
+# THEME
 # ---------------------------------------------------------------------------
 if "dark_mode" not in st.session_state:
-    st.session_state.dark_mode = True  # default to dark
+    st.session_state.dark_mode = True
 
-dark = st.session_state.dark_mode
-
-# ---------------------------------------------------------------------------
-# TTS BRAND CSS THEME — DARK / LIGHT
-# ---------------------------------------------------------------------------
-# Color tokens
-if dark:
-    BG = "#0e1117"; BG2 = "#1a1f2e"; SIDEBAR_BG = "#131720"
-    BORDER = "#2a2f3a"; TEXT = "#e0e0e0"; TEXT_MUTED = "#9ca3af"
-    CARD_BG = "#1a1f2e"; METRIC_VAL = "#ff6600"; METRIC_ACCENT = "#ff6600"
-    HEADER_HEAD = "#ff6600"; HEADER_TAIL = "#ff8c3a"
-    SHADOW = "rgba(0,0,0,0.3)"; HOVER_SHADOW = "rgba(255,102,0,0.15)"
-    BTN_HOVER_TEXT = "#0e1117"; DIVIDER = "#2a2f3a"
-    STATUS_RED = "#ff4444"; STATUS_GREEN = "#34d399"
-    TOPBAR = "linear-gradient(90deg, #0a1628, #012f5d 60%, #ff6600)"
-else:
-    BG = "#ffffff"; BG2 = "#f8f8fa"; SIDEBAR_BG = "#f8f8fa"
-    BORDER = "#e5e5e5"; TEXT = "#222222"; TEXT_MUTED = "#777777"
-    CARD_BG = "#ffffff"; METRIC_VAL = "#012f5d"; METRIC_ACCENT = "#012f5d"
-    HEADER_HEAD = "#012f5d"; HEADER_TAIL = "#ff6600"
-    SHADOW = "rgba(0,0,0,0.05)"; HOVER_SHADOW = "rgba(1,47,93,0.12)"
-    BTN_HOVER_TEXT = "#ffffff"; DIVIDER = "#e5e5e5"
-    STATUS_RED = "#e60000"; STATUS_GREEN = "#00C853"
-    TOPBAR = "linear-gradient(90deg, #012f5d, #012f5d 70%, #ff6600)"
-
-st.markdown(f"""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600&display=swap');
-
-    /* Global typography */
-    html, body, [class*="css"] {{
-        font-family: 'Open Sans', sans-serif;
-    }}
-    h1, h2, h3, h4, h5, h6 {{
-        font-family: 'Roboto', sans-serif !important;
-    }}
-
-    /* Main app background */
-    .stApp {{
-        background-color: {BG} !important;
-    }}
-
-    /* Top header bar */
-    .stApp > header {{
-        background: {TOPBAR} !important;
-    }}
-
-    /* Metric card styling */
-    [data-testid="stMetricValue"] {{
-        font-size: 1.8rem;
-        font-weight: 700;
-        font-family: 'Roboto', sans-serif !important;
-        color: {METRIC_VAL} !important;
-    }}
-    [data-testid="stMetricLabel"] {{
-        color: {TEXT_MUTED} !important;
-    }}
-
-    /* Sidebar */
-    [data-testid="stSidebar"] {{
-        background-color: {SIDEBAR_BG};
-        border-right: 1px solid {BORDER};
-    }}
-
-    /* Dataframe styling */
-    .stDataFrame {{
-        border-radius: 8px;
-    }}
-
-    /* Metric card borders */
-    div[data-testid="stMetric"] {{
-        background-color: {CARD_BG};
-        border: 1px solid {BORDER};
-        border-left: 4px solid {METRIC_ACCENT};
-        padding: 12px 16px;
-        border-radius: 8px;
-        box-shadow: 0px 2px 10px {SHADOW};
-    }}
-
-    /* Section headers */
-    .fire-header {{
-        background: linear-gradient(90deg, {HEADER_HEAD}, {HEADER_TAIL});
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 700;
-        font-family: 'Roboto', sans-serif !important;
-    }}
-
-    /* Status colors */
-    .status-overdue {{ color: {STATUS_RED}; font-weight: 600; }}
-    .status-due-soon {{ color: #ff6600; font-weight: 600; }}
-    .status-ok {{ color: {STATUS_GREEN}; font-weight: 600; }}
-
-    /* Hero stat cards */
-    .hero-stat {{
-        text-align: center;
-        padding: 20px;
-        background: {CARD_BG};
-        border-radius: 10px;
-        border: 1px solid {BORDER};
-        box-shadow: 0px 4px 15px {SHADOW};
-        transition: all 0.3s ease;
-    }}
-    .hero-stat:hover {{
-        box-shadow: 0px 4px 20px {HOVER_SHADOW};
-        border-color: #ff6600;
-    }}
-    .hero-stat h2 {{
-        color: {METRIC_VAL};
-        margin: 0;
-        font-size: 2.2rem;
-        font-family: 'Roboto', sans-serif !important;
-    }}
-    .hero-stat p {{
-        color: {TEXT_MUTED};
-        margin: 4px 0 0 0;
-        font-size: 0.9rem;
-    }}
-
-    /* Navigation cards */
-    .nav-card {{
-        padding: 18px;
-        background: {CARD_BG};
-        border-radius: 10px;
-        border: 1px solid {BORDER};
-        text-align: center;
-        transition: all 0.3s ease;
-        box-shadow: 0px 2px 10px {SHADOW};
-    }}
-    .nav-card:hover {{
-        border-color: #ff6600;
-        box-shadow: 0 4px 15px {HOVER_SHADOW};
-        transform: translateY(-2px);
-    }}
-    .nav-card h3 {{
-        margin: 8px 0 4px 0;
-        font-size: 1rem;
-        color: {TEXT};
-        font-family: 'Roboto', sans-serif !important;
-    }}
-    .nav-card p {{
-        color: {TEXT_MUTED};
-        font-size: 0.8rem;
-        margin: 0;
-    }}
-
-    /* Buttons — TTS orange */
-    .stButton > button {{
-        border-color: #ff6600;
-        color: #ff6600;
-        transition: all 0.3s ease;
-    }}
-    .stButton > button:hover {{
-        background-color: #ff6600;
-        color: {BTN_HOVER_TEXT};
-        border-color: #ff6600;
-    }}
-
-    /* Progress bar */
-    .stProgress > div > div > div {{
-        background-color: #ff6600 !important;
-    }}
-
-    /* Expander headers */
-    .streamlit-expanderHeader {{
-        font-family: 'Roboto', sans-serif !important;
-        color: {TEXT} !important;
-    }}
-
-    /* Tab styling */
-    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {{
-        color: #ff6600 !important;
-        border-bottom-color: #ff6600 !important;
-    }}
-
-    /* Dividers */
-    hr {{
-        border-color: {DIVIDER} !important;
-    }}
-
-    /* Alert banners */
-    .stAlert [data-testid="stNotificationContentWarning"] {{
-        border-left-color: #ff6600 !important;
-    }}
-    .stAlert [data-testid="stNotificationContentError"] {{
-        border-left-color: {STATUS_RED} !important;
-    }}
-</style>
-""", unsafe_allow_html=True)
+dark = is_dark_mode()
+c = get_colors()
+inject_css()
 
 # ---------------------------------------------------------------------------
 # DATABASE INIT
@@ -232,7 +47,7 @@ with st.sidebar:
     theme_col1, theme_col2 = st.columns([3, 1])
     with theme_col1:
         st.markdown(
-            f'<p style="color: {TEXT_MUTED}; font-size: 0.8rem; margin: 4px 0;">Theme</p>',
+            f'<p style="color: {c["TEXT_MUTED"]}; font-size: 0.8rem; margin: 4px 0;">Theme</p>',
             unsafe_allow_html=True,
         )
     with theme_col2:
@@ -241,7 +56,7 @@ with st.sidebar:
             st.rerun()
 
     # Logo
-    logo_bg = "#012f5d" if dark else "#012f5d"
+    logo_bg = "#012f5d"
     if os.path.exists(LOGO_PATH):
         import base64
         with open(LOGO_PATH, "rb") as f:
@@ -255,13 +70,13 @@ with st.sidebar:
         )
     else:
         st.markdown(
-            f'<h2 style="color: {METRIC_VAL}; font-family: Roboto, sans-serif; '
+            f'<h2 style="color: {c["METRIC_VAL"]}; font-family: Roboto, sans-serif; '
             f'font-weight: 700; margin: 0;">TTS Guard</h2>',
             unsafe_allow_html=True,
         )
 
     st.markdown(
-        f'<p style="color: {TEXT_MUTED}; font-size: 0.85rem; margin-top: 2px;">'
+        f'<p style="color: {c["TEXT_MUTED"]}; font-size: 0.85rem; margin-top: 2px;">'
         "Talent Technical Services</p>",
         unsafe_allow_html=True,
     )
@@ -311,19 +126,19 @@ with st.sidebar:
 # WELCOME PAGE
 # ---------------------------------------------------------------------------
 st.markdown(
-    f'<h1 style="background: linear-gradient(90deg, {HEADER_HEAD}, {HEADER_TAIL}); '
+    f'<h1 style="background: linear-gradient(90deg, {c["HEADER_HEAD"]}, {c["HEADER_TAIL"]}); '
     "-webkit-background-clip: text; -webkit-text-fill-color: transparent; "
     'font-family: Roboto, sans-serif; font-weight: 700; '
     'margin-bottom: 0;">TTS Guard</h1>',
     unsafe_allow_html=True,
 )
 st.markdown(
-    f'<h3 style="color: {METRIC_VAL}; font-family: Roboto, sans-serif; '
+    f'<h3 style="color: {c["METRIC_VAL"]}; font-family: Roboto, sans-serif; '
     f'font-weight: 500; margin-top: 0;">AMC Management Dashboard</h3>',
     unsafe_allow_html=True,
 )
 st.markdown(
-    f'<p style="color: {TEXT_MUTED}; font-size: 1.05rem; margin-top: -8px;">'
+    f'<p style="color: {c["TEXT_MUTED"]}; font-size: 1.05rem; margin-top: -8px;">'
     "Centralized inspection tracking, compliance monitoring, and financial oversight "
     "for fire safety AMC contracts across Abu Dhabi.</p>",
     unsafe_allow_html=True,

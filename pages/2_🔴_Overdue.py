@@ -4,6 +4,7 @@ Lists overdue buildings with scheduling capability (date + technician).
 """
 
 import streamlit as st
+import plotly.graph_objects as go
 from datetime import date, timedelta
 from database import (
     get_overdue_inspections,
@@ -11,6 +12,10 @@ from database import (
     is_building_scheduled,
     TECHNICIANS,
 )
+from theme import get_colors, inject_css, plotly_layout
+
+c = get_colors()
+inject_css()
 
 st.markdown(
     '<h1 class="fire-header">🔴 Overdue Inspections</h1>',
@@ -25,7 +30,7 @@ if overdue_count == 0:
     st.stop()
 
 st.markdown(
-    f'<p style="font-size: 1.1rem; color: #e60000; font-weight: 600;">'
+    f'<p style="font-size: 1.1rem; color: {c["STATUS_RED"]}; font-weight: 600;">'
     f"⚠️ {overdue_count} building{'s' if overdue_count > 1 else ''} "
     f"with overdue inspections</p>",
     unsafe_allow_html=True,
@@ -58,12 +63,28 @@ for idx, row in overdue_df.iterrows():
                 int(row["days_since_last"]) - int(365 / row["visits_per_year"]),
                 0,
             )
-            st.metric(
-                "Days Overdue",
-                days_overdue,
-                delta=f"-{days_overdue} days",
-                delta_color="inverse",
-            )
+            # Severity gauge
+            fig_gauge = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=days_overdue,
+                number={"suffix": " days", "font": {"color": c["STATUS_RED"], "size": 22}},
+                gauge={
+                    "axis": {"range": [0, 60], "tickcolor": c["TEXT_MUTED"], "tickfont": {"size": 9}},
+                    "bar": {"color": c["STATUS_RED"]},
+                    "bgcolor": c["BORDER"],
+                    "steps": [
+                        {"range": [0, 15], "color": "rgba(255,102,0,0.2)"},
+                        {"range": [15, 30], "color": "rgba(255,140,58,0.2)"},
+                        {"range": [30, 60], "color": "rgba(255,68,68,0.2)"},
+                    ],
+                },
+                title={"text": "Severity", "font": {"color": c["TEXT_MUTED"], "size": 11}},
+            ))
+            fig_gauge.update_layout(**plotly_layout(
+                height=160,
+                margin={"l": 15, "r": 15, "t": 30, "b": 0},
+            ))
+            st.plotly_chart(fig_gauge, use_container_width=True, key=f"gauge_{building_id}")
 
         # Last inspection info
         if row["last_inspection_date"]:
@@ -102,8 +123,8 @@ for idx, row in overdue_df.iterrows():
                     key=f"tech_{building_id}",
                 )
 
-            c1, c2 = st.columns(2)
-            with c1:
+            sc1, sc2 = st.columns(2)
+            with sc1:
                 if st.button(
                     "✅ Confirm Schedule",
                     key=f"confirm_{building_id}",
@@ -121,7 +142,7 @@ for idx, row in overdue_df.iterrows():
                         f"Assigned to {sched_tech}"
                     )
                     st.rerun()
-            with c2:
+            with sc2:
                 if st.button(
                     "❌ Cancel",
                     key=f"cancel_{building_id}",
