@@ -39,25 +39,35 @@ if not has_data():
 LOGO_PATH = os.path.join(os.path.dirname(__file__), "assets", "logo.png")
 
 with st.sidebar:
-    # Logo
-    logo_bg = "#012f5d"
-    if os.path.exists(LOGO_PATH):
-        import base64
-        with open(LOGO_PATH, "rb") as f:
-            logo_b64 = base64.b64encode(f.read()).decode()
-        st.markdown(
-            f'<div style="background-color: {logo_bg}; padding: 16px 20px; '
-            f'border-radius: 10px; text-align: center; margin-bottom: 8px;">'
-            f'<img src="data:image/png;base64,{logo_b64}" width="180" />'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.markdown(
-            f'<h2 style="color: {c["METRIC_VAL"]}; font-family: Roboto, sans-serif; '
-            f'font-weight: 700; margin: 0;">TTS Guard</h2>',
-            unsafe_allow_html=True,
-        )
+    # Modern CSS Logo
+    st.markdown(
+        """
+        <div style="text-align: center; padding: 12px 0 24px 0;">
+            <div style="
+                background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                font-size: 2.6rem;
+                font-weight: 900;
+                letter-spacing: -0.05em;
+                line-height: 1;
+                font-family: 'Inter', sans-serif;
+            ">
+                TTS<span style="font-weight: 400; -webkit-text-fill-color: #94a3b8;">GUARD</span><span style="-webkit-text-fill-color: #ef4444;">.</span>
+            </div>
+            <div style="
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: #64748b;
+                text-transform: uppercase;
+                letter-spacing: 0.15em;
+                margin-top: 8px;
+            ">
+                Talent Technical Services
+            </div>
+        </div>
+        """, unsafe_allow_html=True
+    )
 
     st.caption("Talent Technical Services")
     st.markdown(f"📅 {date.today().strftime('%B %d, %Y')}")
