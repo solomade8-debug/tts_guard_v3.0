@@ -169,26 +169,30 @@ if st.button("✅ Submit Inspection", use_container_width=True, type="primary"):
             "status": status,
         })
 
-    pdf_bytes = generate_inspection_pdf(
-        building_name=building["name"],
-        client_name=building["client_name"],
-        inspection_date=inspection_date.isoformat(),
-        technician=technician,
-        items_checked=total,
-        items_passed=passed,
-        items_failed=failed,
-        equipment_details=equipment_details,
-        notes=notes or "",
-    )
+    try:
+        pdf_bytes = generate_inspection_pdf(
+            building_name=building["name"],
+            client_name=building["client_name"],
+            inspection_date=inspection_date.isoformat(),
+            technician=technician,
+            items_checked=total,
+            items_passed=passed,
+            items_failed=failed,
+            equipment_details=equipment_details,
+            notes=notes or "",
+        )
 
-    filename = f"TTS_Inspection_{building['name'].replace(' ', '_')}_{inspection_date.isoformat()}.pdf"
-    st.download_button(
-        label="📥 Download Inspection Report (PDF)",
-        data=pdf_bytes,
-        file_name=filename,
-        mime="application/pdf",
-        use_container_width=True,
-    )
+        filename = f"TTS_Inspection_{building['name'].replace(' ', '_')}_{inspection_date.isoformat()}.pdf"
+        st.download_button(
+            label="📥 Download Inspection Report (PDF)",
+            data=pdf_bytes,
+            file_name=filename,
+            mime="application/pdf",
+            use_container_width=True,
+        )
+    except Exception as e:
+        st.error(f"⚠️ PDF generation failed: {e}")
+        st.caption("The inspection was saved successfully. PDF report can be regenerated later.")
 
     # ---- Create Complaint Ticket (if failures) ----
     if failed > 0:
