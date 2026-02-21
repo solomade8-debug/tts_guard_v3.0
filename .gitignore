@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+tts_guard.db
+.DS_Store
+.env
+.claude/

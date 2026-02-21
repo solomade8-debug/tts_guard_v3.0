@@ -1,0 +1,166 @@
+"""
+TTS Guard — Dashboard Page
+Key metrics, alert banner, financial health, upcoming inspections,
+recent complaints, and client overview.
+"""
+
+import streamlit as st
+from database import (
+    get_active_contracts_count,
+    get_overdue_inspections,
+    get_upcoming_inspections,
+    get_completed_this_month,
+    get_recent_complaints,
+    get_client_summary,
+    get_financial_summary,
+)
+
+st.markdown(
+    '<h1 class="fire-header">📊 Dashboard</h1>',
+    unsafe_allow_html=True,
+)
+
+# ---------------------------------------------------------------------------
+# TOP ROW — 4 Inspection Metric Cards
+# ---------------------------------------------------------------------------
+contracts_count = get_active_contracts_count()
+overdue_df = get_overdue_inspections()
+overdue_count = len(overdue_df)
+upcoming_df = get_upcoming_inspections(14)
+upcoming_count = len(upcoming_df)
+completed_df = get_completed_this_month()
+completed_count = len(completed_df)
+
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric("Active Contracts", contracts_count)
+with col2:
+    st.metric(
+        "🔴 Overdue",
+        overdue_count,
+        delta=f"{overdue_count} need attention" if overdue_count > 0 else "All clear",
+        delta_color="inverse" if overdue_count > 0 else "normal",
+    )
+with col3:
+    st.metric("🟡 Due Within 14 Days", upcoming_count)
+with col4:
+    st.metric("🟢 Completed This Month", completed_count)
+
+# ---------------------------------------------------------------------------
+# ALERT BANNER
+# ---------------------------------------------------------------------------
+if overdue_count > 0:
+    st.error(
+        f"⚠️ **{overdue_count} inspection{'s' if overdue_count > 1 else ''} overdue** "
+        "— Risk of Civil Defence non-compliance"
+    )
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# FINANCIAL HEALTH SECTION
+# ---------------------------------------------------------------------------
+st.subheader("💰 Financial Health")
+
+financials = get_financial_summary()
+
+fcol1, fcol2, fcol3, fcol4 = st.columns(4)
+with fcol1:
+    st.metric(
+        "Total Contract Value",
+        f"AED {financials['total_contract_value']:,.0f}",
+    )
+with fcol2:
+    st.metric(
+        "Collected",
+        f"AED {financials['total_collected']:,.0f}",
+        delta=f"{financials['collection_pct']:.0f}%",
+    )
+with fcol3:
+    st.metric(
+        "Outstanding",
+        f"AED {financials['total_outstanding']:,.0f}",
+        delta=f"{financials['outstanding_count']} invoices",
+        delta_color="inverse",
+    )
+with fcol4:
+    st.metric(
+        "Overdue Payments",
+        f"AED {financials['total_overdue']:,.0f}",
+        delta=f"{financials['overdue_count']} overdue",
+        delta_color="inverse",
+    )
+
+# Collection rate progress bar
+collection_pct = financials["collection_pct"]
+st.progress(
+    min(collection_pct / 100, 1.0),
+    text=f"Collection Rate: {collection_pct:.1f}%",
+)
+
+st.caption("→ View full details on the **💰 Financials** page")
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# TWO COLUMNS: Upcoming Inspections + Recent Complaints
+# ---------------------------------------------------------------------------
+left, right = st.columns(2)
+
+with left:
+    st.subheader("📅 Upcoming Inspections")
+    if len(upcoming_df) > 0:
+        display_df = upcoming_df[
+            ["building_name", "client_name", "area", "days_until_next"]
+        ].copy()
+        display_df.columns = ["Building", "Client", "Area", "Days Remaining"]
+        display_df = display_df.sort_values("Days Remaining")
+        st.dataframe(display_df, use_container_width=True, hide_index=True)
+    else:
+        st.success("No inspections due within 14 days.")
+
+with right:
+    st.subheader("🎫 Recent Complaints")
+    complaints_df = get_recent_complaints(5)
+    if len(complaints_df) > 0:
+        for _, comp in complaints_df.iterrows():
+            priority_color = {
+                "high": "🔴",
+                "medium": "🟡",
+                "low": "🟢",
+            }.get(comp["priority"], "⚪")
+
+            with st.container(border=True):
+                st.markdown(
+                    f"**{comp['ticket_number']}** {priority_color} `{comp['priority'].upper()}`"
+                )
+                st.markdown(f"{comp['message']}")
+                st.caption(
+                    f"{comp['client_name']} — {comp['building_name']} · "
+                    f"{comp['status'].replace('_', ' ').title()} · {comp['created_at']}"
+                )
+    else:
+        st.info("No recent complaints.")
+
+st.divider()
+
+# ---------------------------------------------------------------------------
+# CLIENT OVERVIEW TABLE
+# ---------------------------------------------------------------------------
+st.subheader("👥 Client Overview")
+
+client_summary = get_client_summary()
+if len(client_summary) > 0:
+    display_cs = client_summary[
+        ["Client", "Buildings", "Equipment", "Annual Value (AED)", "overdue_count"]
+    ].copy()
+
+    # Format status column
+    display_cs["Status"] = display_cs["overdue_count"].apply(
+        lambda x: f"🔴 {x} overdue" if x > 0 else "✅ All clear"
+    )
+    display_cs["Annual Value (AED)"] = display_cs["Annual Value (AED)"].apply(
+        lambda x: f"AED {x:,.0f}"
+    )
+    display_cs = display_cs.drop(columns=["overdue_count"])
+    st.dataframe(display_cs, use_container_width=True, hide_index=True)
