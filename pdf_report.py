@@ -256,5 +256,5 @@ def generate_inspection_pdf(
     pdf.cell(sig_width, 5, f"Date: {inspection_date}")
     pdf.cell(sig_width, 5, f"Date: {inspection_date}", ln=True)
 
-    # Return as bytes
-    return pdf.output()
+    # Return as bytes (fpdf2 returns bytearray, Streamlit needs bytes)
+    return bytes(pdf.output())
