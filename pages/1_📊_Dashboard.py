@@ -203,7 +203,7 @@ with right:
 
             with st.container(border=True):
                 st.markdown(
-                    f'<div style="border-left: 4px solid {border_color}; padding-left: 8px;">'
+                    f'<div style="border-left: 4px solid {border_color}; padding-left: 8px; color: {c["TEXT"]};">'
                     f"<strong>{comp['ticket_number']}</strong> {priority_emoji} "
                     f"<code>{comp['priority'].upper()}</code>"
                     f"</div>",

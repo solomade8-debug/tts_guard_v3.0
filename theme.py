@@ -61,12 +61,15 @@ def inject_css():
 
     html, body, [class*="css"] {{
         font-family: 'Open Sans', sans-serif;
+        color: {c['TEXT']};
     }}
     h1, h2, h3, h4, h5, h6 {{
         font-family: 'Roboto', sans-serif !important;
+        color: {c['TEXT']} !important;
     }}
     .stApp {{
         background-color: {c['BG']} !important;
+        color: {c['TEXT']} !important;
     }}
     .stApp > header {{
         background: {c['TOPBAR']} !important;
@@ -82,8 +85,37 @@ def inject_css():
     [data-testid="stSidebar"] {{
         background-color: {c['SIDEBAR_BG']};
         border-right: 1px solid {c['BORDER']};
+        color: {c['TEXT']};
     }}
     .stDataFrame {{ border-radius: 8px; }}
+
+    /* Markdown content text */
+    [data-testid="stMarkdownContainer"] p,
+    [data-testid="stMarkdownContainer"] li,
+    [data-testid="stMarkdownContainer"] strong,
+    [data-testid="stMarkdownContainer"] code {{
+        color: {c['TEXT']};
+    }}
+
+    /* Captions */
+    [data-testid="stCaption"] {{
+        color: {c['TEXT_MUTED']} !important;
+    }}
+
+    /* Form labels and inputs */
+    label {{
+        color: {c['TEXT']} !important;
+    }}
+    [data-baseweb="input"] input,
+    [data-baseweb="textarea"] textarea,
+    [data-baseweb="select"] div {{
+        color: {c['TEXT']} !important;
+    }}
+
+    /* Expander body text */
+    [data-testid="stExpander"] details {{
+        color: {c['TEXT']};
+    }}
     div[data-testid="stMetric"] {{
         background-color: {c['CARD_BG']};
         border: 1px solid {c['BORDER']};
